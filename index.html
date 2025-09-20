@@ -1,194 +1,1089 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>AI Daily Activity Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Daily Activity Planner — Pro</title>
+<!-- Single-file build with CDN libs only -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+<style>
+:root{--bg:#0b0f17;--panel:#121826;--panel-2:#0f1523;--text:#e6edf3;--muted:#9fb0c0;--primary:#3b82f6;--accent:#10b981;--danger:#ef4444;--warning:#f59e0b;--surface:#1b2336;--ring:0 0 0 3px rgba(59,130,246,.35)}
+/* Light theme */
+[data-theme="light"]{
+  --bg:#f6f8fb;--panel:#ffffff;--panel-2:#eef2f7;--text:#0b0f17;--muted:#52616f;
+  --primary:#2563eb;--accent:#059669;--danger:#dc2626;--warning:#d97706;--surface:#e9eef6;
+  --ring:0 0 0 3px rgba(37,99,235,.35)
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--panel-2);border-radius:4px}
+.card{background:var(--panel);border-radius:1rem;padding:1rem;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.btn{padding:.5rem 1rem;border-radius:.75rem;font-weight:600}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-ghost{background:transparent;color:var(--text)}
+.btn:focus{outline:var(--ring)}
+.toast{position:fixed;bottom:1rem;right:1rem;background:var(--surface);padding:.75rem 1rem;border-radius:.5rem;box-shadow:0 2px 6px rgba(0,0,0,.5);opacity:0;transform:translateY(20px);transition:.25s;z-index:50}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.error{border-left:4px solid var(--danger)}
+.toast.warn{border-left:4px solid var(--warning)}
+.chip{display:inline-flex;align-items:center;padding:0 .5rem;border-radius:1rem;font-size:.875rem;background:var(--surface)}
+.dot{width:.5rem;height:.5rem;border-radius:999px;margin-right:.35rem}
+.ai-bubble{background:linear-gradient(180deg,rgba(20,26,41,.9),rgba(20,26,41,.6));padding:1rem;border-radius:.75rem;margin:.5rem 0;white-space:pre-wrap;border-left:4px solid var(--accent)}
+.sys-note{color:var(--muted);font-size:.85rem;margin:.25rem 0}
+.handle{cursor:grab;user-select:none}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+#chart{height:260px}
+li.dragging{opacity:.6}
+li.drop-target{outline:2px dashed rgba(255,255,255,.15)}
+.line-through-muted{text-decoration:line-through;color:var(--muted)}
+kbd{background:var(--panel-2);padding:.1rem .35rem;border-radius:.25rem;border:1px solid rgba(255,255,255,.08);font-size:.75rem}
+.note-text{max-height:2.6em;overflow:hidden}
+.note-text.expanded{max-height:none}
+.note-toggle{font-size:.8rem;color:var(--muted);text-decoration:underline;cursor:pointer}
+.tag-Work{background:#1e3a8a}.tag-Health{background:#064e3b}.tag-Rest{background:#78350f}.tag-Learn{background:#312e81}.tag-Social{background:#831843}.tag-Admin{background:#134e4a}.tag-Misc{background:#334155}
+@media (prefers-reduced-motion: reduce){.toast{transition:none;transform:none}}
+/* Modal */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:60}
+.modal.show{display:flex}
+.modal-card{max-height:85vh;overflow:auto;background:var(--panel);border-radius:1rem;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.modal-header{position:sticky;top:0;background:var(--panel);z-index:1}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{border-bottom:1px solid rgba(255,255,255,.08);padding:.5rem .6rem;text-align:left}
+.table th{opacity:.9}
+.badge{display:inline-block;padding:.15rem .45rem;border-radius:.5rem;background:var(--panel-2);font-size:.75rem}
+</style>
 </head>
-<body class="bg-gray-900 text-white h-screen flex flex-col">
+<body class="p-4" role="application">
+  <h1 class="text-2xl font-bold mb-2">AI Daily Activity Planner — Pro</h1>
+  <p class="text-sm text-[var(--muted)] mb-4">Hard focus. Keyboard (<kbd>Enter</kbd> add, <kbd>↑/↓</kbd> move, <kbd>e</kbd> edit, <kbd>Del</kbd> delete). 24h cap per day.</p>
 
-  <!-- Header -->
-  <header class="bg-gray-800 p-4 text-xl font-bold flex justify-between items-center">
-    <span>AI Daily Activity Tracker 🚀</span>
-    <button id="manageBtn" class="px-3 py-1 bg-purple-600 rounded">⚙️ Manage Activities</button>
-  </header>
-
-  <!-- Activity Selector -->
-  <div class="p-4 bg-gray-800 flex space-x-2">
-    <select id="activity" class="flex-1 p-2 rounded bg-gray-700 text-white"></select>
-    <button id="logBtn" class="px-4 py-2 bg-blue-500 rounded">Log</button>
-  </div>
-
-  <!-- Log Display -->
-  <main id="log" class="flex-1 overflow-y-auto p-4 space-y-2"></main>
-
-  <!-- Controls -->
-  <div class="p-4 bg-gray-800 flex justify-between">
-    <button id="clearBtn" class="px-4 py-2 bg-red-600 rounded">Clear All Logs</button>
-  </div>
-
-  <!-- Activity Manager Modal -->
-  <div id="activityModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center">
-    <div class="bg-gray-800 p-6 rounded-lg w-96">
-      <h2 class="text-lg font-bold mb-4">Manage Activities</h2>
-      <ul id="activityList" class="space-y-2 mb-4"></ul>
-      <div class="flex space-x-2">
-        <input id="newActivity" placeholder="New activity..." class="flex-1 p-2 rounded bg-gray-700 text-white">
-        <button id="addActivity" class="px-3 py-1 bg-green-600 rounded">Add</button>
+  <div class="card mb-4">
+    <div class="flex flex-wrap gap-2 items-center">
+      <div class="flex items-center gap-2">
+        <button id="prev-day" class="btn btn-ghost" title="Previous day" aria-label="Previous day">◀</button>
+        <input id="day-picker" type="date" class="p-2 rounded bg-[var(--panel-2)]" aria-label="Choose day" />
+        <button id="next-day" class="btn btn-ghost" title="Next day" aria-label="Next day">▶</button>
+        <button id="copy-prev" class="btn btn-accent" title="Copy yesterday into this day" aria-label="Copy yesterday">Copy yesterday</button>
+        <button id="theme-toggle" class="btn btn-ghost" title="Toggle theme" aria-label="Toggle theme">☾/☀</button>
+        <button id="open-docs" class="btn btn-ghost" title="Open overview & docs" aria-label="Open overview and docs">Help/Overview</button>
       </div>
-      <div class="mt-4 text-right">
-        <button id="closeModal" class="px-4 py-2 bg-gray-600 rounded">Close</button>
+      <div class="flex-1"></div>
+      <div class="flex items-center gap-2">
+        <input id="filter-q" class="p-2 rounded bg-[var(--panel-2)]" placeholder="Filter name, notes, tags" aria-label="Filter planner items" />
+        <label class="inline-flex items-center gap-2 text-sm select-none">
+          <input id="hide-completed" type="checkbox" class="accent-[var(--primary)]" aria-label="Hide completed"> Hide completed
+        </label>
       </div>
     </div>
   </div>
 
-  <script>
-    // New universal activities
-    const defaultActivities = [
-      "Sleeping",
-      "Eating",
-      "Drinking",
-      "Personal Hygiene",
-      "Working / Studying",
-      "Social Interaction",
-      "Walking / Moving",
-      "Leisure / Entertainment",
-      "Resting / Relaxing",
-      "Using Technology / Communication"
-    ];
-
-    let activities = JSON.parse(localStorage.getItem("activities") || JSON.stringify(defaultActivities));
-    let logs = JSON.parse(localStorage.getItem("activityLogs") || "[]");
-
-    const activitySelect = document.getElementById("activity");
-    const logDiv = document.getElementById("log");
-    const logBtn = document.getElementById("logBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    const manageBtn = document.getElementById("manageBtn");
-    const modal = document.getElementById("activityModal");
-    const activityList = document.getElementById("activityList");
-    const newActivityInput = document.getElementById("newActivity");
-    const addActivityBtn = document.getElementById("addActivity");
-    const closeModal = document.getElementById("closeModal");
-
-    // --- AI Coach feedback rules ---
-    function coachFeedback(activity) {
-      const feedback = {
-        "Sleeping": "😴 Good rest boosts energy and memory.",
-        "Eating": "🍎 Fuel your body well — balance is key.",
-        "Drinking": "💧 Hydration keeps you sharp and healthy.",
-        "Personal Hygiene": "🚿 Clean habits, clean mind!",
-        "Working / Studying": "💻 Great progress — consistency builds mastery.",
-        "Social Interaction": "🗣️ Connection strengthens your wellbeing.",
-        "Walking / Moving": "🚶 Movement keeps body & mind active.",
-        "Leisure / Entertainment": "🎮 Balance fun and focus.",
-        "Resting / Relaxing": "🛋️ Recharge to prevent burnout.",
-        "Using Technology / Communication": "📱 Stay connected, but don’t overdo screen time."
-      };
-      return feedback[activity] || "✨ Keep going!";
-    }
-
-    // --- Rendering ---
-    function renderActivities() {
-      activitySelect.innerHTML = "";
-      activities.forEach(a => {
-        const opt = document.createElement("option");
-        opt.textContent = a;
-        activitySelect.appendChild(opt);
-      });
-    }
-
-    function renderLogs() {
-      logDiv.innerHTML = "";
-      logs.forEach((e, i) => {
-        const row = document.createElement("div");
-        row.className = "flex flex-col bg-gray-700 p-2 rounded space-y-1";
-        row.innerHTML = `
-          <div class="flex justify-between">
-            <span>${e.time} → <b>${e.activity}</b></span>
-            <button class="bg-red-500 px-2 rounded" onclick="deleteLog(${i})">✕</button>
+  <div class="grid md:grid-cols-2 gap-4">
+    <div class="space-y-4">
+      <div class="card">
+        <h2 class="font-semibold mb-2">Add Activity</h2>
+        <form id="activity-form" class="grid grid-cols-1 gap-2 md:grid-cols-7" autocomplete="off">
+          <input id="act-name" maxlength="20" required placeholder="Name (≤20)" aria-label="Activity name" class="md:col-span-2 w-full p-2 rounded bg-[var(--panel-2)]" />
+          <textarea id="act-notes" maxlength="140" placeholder="Notes (≤140)" aria-label="Activity notes" class="md:col-span-3 w-full p-2 rounded bg-[var(--panel-2)]"></textarea>
+          <input id="act-tags" maxlength="60" placeholder="Tags: Work,Health" aria-label="Tags comma-separated" class="md:col-span-1 w-full p-2 rounded bg-[var(--panel-2)]" />
+          <input id="act-duration" type="number" min="0.25" step="0.25" required placeholder="Hours" aria-label="Duration in hours" class="md:col-span-1 w-full p-2 rounded bg-[var(--panel-2)]" />
+          <div class="md:col-span-7 flex gap-2">
+            <button class="btn btn-primary" type="submit" id="add-btn" aria-label="Add activity">Add</button>
+            <button type="button" id="clear-form" class="btn btn-ghost" aria-label="Clear form">Clear</button>
           </div>
-          <div class="text-sm text-green-400">🤖 Coach: ${e.feedback}</div>
-        `;
-        logDiv.appendChild(row);
-      });
+        </form>
+        <div class="flex flex-wrap gap-2 mt-2">
+          <button class="btn btn-accent quick" aria-label="Quick add Eat" data-name="Eat" data-tags="Health" data-dur="1">+Eat</button>
+          <button class="btn btn-accent quick" aria-label="Quick add Sleep" data-name="Sleep" data-tags="Rest" data-dur="8">+Sleep</button>
+          <button class="btn btn-accent quick" aria-label="Quick add Work" data-name="Work" data-tags="Work" data-dur="4">+Work</button>
+          <button class="btn btn-accent quick" aria-label="Quick add Exercise" data-name="Exercise" data-tags="Health" data-dur="1">+Exercise</button>
+          <button class="btn btn-accent quick" aria-label="Quick add Study" data-name="Study" data-tags="Learn" data-dur="1.5">+Study</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold">Planner</h2>
+          <div class="flex items-center gap-2">
+            <div class="text-sm text-[var(--muted)]" id="free-hours" aria-live="polite"></div>
+            <button id="undo-banner" class="btn btn-ghost hidden" title="Undo last delete" aria-label="Undo last delete">Undo last delete</button>
+          </div>
+        </div>
+        <ul id="planner" class="space-y-2" aria-live="polite"></ul>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button id="export-planner" class="btn btn-primary" aria-label="Export current day as JSON">Export Planner (JSON)</button>
+          <button id="export-data" class="btn btn-primary" aria-label="Export all data as JSON">Export All (JSON)</button>
+          <button id="export-csv-day" class="btn btn-accent" aria-label="Export current day as CSV">Export Day (CSV)</button>
+          <button id="export-csv-all" class="btn btn-accent" aria-label="Export all data as CSV">Export All (CSV)</button>
+          <input id="import-file" type="file" class="hidden" accept=".json" />
+          <button id="import-btn" class="btn btn-ghost" aria-label="Import JSON">Import JSON</button>
+          <label class="ml-auto inline-flex items-center gap-2 text-sm select-none">
+            <input id="chart-include-completed" type="checkbox" class="accent-[var(--primary)]" aria-label="Include completed in chart"> Include completed in chart
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="font-semibold mb-2">Summary</h2>
+        <div id="summary" class="space-y-1"></div>
+        <canvas id="chart" class="mt-2" aria-label="Activity distribution chart" role="img"></canvas>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="card">
+        <h2 class="font-semibold mb-2">AI Coach</h2>
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+          <div id="env-chip" class="chip" aria-live="polite"><div class="dot"></div><span>Env</span></div>
+          <div id="model-chip" class="chip" aria-live="polite"><div class="dot bg-green-500"></div><span>Loading</span></div>
+          <button id="switch-model" class="btn btn-primary" aria-label="Switch AI model">Switch Model</button>
+          <button id="force-wasm" class="btn btn-ghost" aria-label="Force WASM backend">Force WASM</button>
+          <button id="try-webgpu" class="btn btn-ghost" aria-label="Try WebGPU">Try WebGPU</button>
+          <button id="clear-ai-cache" class="btn btn-ghost" aria-label="Clear AI cache">Clear AI Cache</button>
+          <label class="inline-flex items-center gap-2 text-sm select-none ml-auto">
+            <input id="cache-toggle" type="checkbox" class="accent-[var(--primary)]" checked aria-label="Use AI cache"> Use cache
+          </label>
+        </div>
+        <div id="progress-wrap" class="w-full bg-[var(--panel-2)] rounded h-3 mb-2" aria-label="Model download progress" aria-live="polite" style="display:none">
+          <div id="progress" class="bg-[var(--primary)] h-3 rounded text-[10px] text-center leading-3" style="width:0%"></div>
+        </div>
+        <div id="coach-log" class="h-64 overflow-y-auto border p-2 rounded bg-[var(--panel-2)]" aria-live="polite"></div>
+        <div class="space-y-2 mt-2">
+          <select id="prompt-type" class="w-full p-2 rounded bg-[var(--panel-2)]" aria-label="Select AI Coach prompt type">
+            <option value="default">Default (Plan + Insight)</option>
+            <option value="productivity">Productivity Tips</option>
+            <option value="motivation">Motivation Boost</option>
+          </select>
+          <input id="custom-prompt" class="w-full p-2 rounded bg-[var(--panel-2)]" placeholder="Optional: Ask the coach anything…" aria-label="Custom coach question"/>
+          <div class="flex gap-2">
+            <button id="ask-coach" class="btn btn-accent w-full" aria-label="Ask coach" disabled>Ask Coach</button>
+            <button id="regen" class="btn btn-ghost" aria-label="Regenerate coach answer" disabled>Regenerate</button>
+            <button id="clear-log" class="btn btn-danger" aria-label="Clear coach log">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <h2 class="font-semibold mb-2">About & Notes</h2>
+    <div class="grid md:grid-cols-2 gap-4 text-sm text-[var(--muted)]">
+      <div>
+        <div class="font-medium text-[var(--text)] mb-1">Limitations</div>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Installable (manifest injected). First load requires internet; offline after assets are cached.</li>
+          <li>AI models are fetched from CDNs at runtime and cached locally.</li>
+          <li>WebGPU may be unstable on some drivers. WASM is safer.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-medium text-[var(--text)] mb-1">Privacy</div>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Planner data stays in your browser's localStorage.</li>
+          <li>No network writes beyond fetching libraries and models.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="live-region" class="sr-only" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Overview / Docs Modal -->
+  <div id="docs-modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="docs-title">
+    <div class="modal-card w-[min(100%,1000px)]">
+      <div class="modal-header p-3 border-b border-white/10 flex items-center gap-2">
+        <h2 id="docs-title" class="text-lg font-semibold">Planner Overview & Docs</h2>
+        <span class="badge">Single-file PWA</span>
+        <button id="close-docs" class="btn btn-ghost ml-auto" aria-label="Close docs">Close</button>
+      </div>
+      <div class="p-4 space-y-4 text-sm leading-6">
+        <p><strong>AI Daily Activity Planner — Pro</strong> is a self-contained, single-file web application and PWA for daily planning with on-device AI coaching. It stores everything locally and runs AI in the browser (WebGPU/WASM) after an initial model download.</p>
+        <h3 class="font-semibold">Key Points</h3>
+        <ul class="list-disc pl-6">
+          <li><strong>Core:</strong> Add, edit, reorder, complete; active time capped at 24h/day; quick-add buttons.</li>
+          <li><strong>AI Coach:</strong> T5-small or SmolLM2-135M-Instruct via Transformers.js; no server calls after download.</li>
+          <li><strong>UX:</strong> Keyboard-first, theme toggle, filter, import/export JSON/CSV; installable PWA.</li>
+          <li><strong>Limits:</strong> Depends on browser GPU/CPU; small models trade quality for privacy/offline use.</li>
+        </ul>
+
+        <h3 class="font-semibold">Key Features</h3>
+        <ul class="list-disc pl-6">
+          <li>Drag-drop and keyboard reordering; inline edit; undo delete.</li>
+          <li>Live pie chart (Chart.js) and summary of hours/free time.</li>
+          <li>Switchable prompts (plan/productivity/motivation), cached replies.</li>
+          <li>LocalStorage per day, copy-from-yesterday, export/import.</li>
+        </ul>
+
+        <h3 class="font-semibold">Setup & Usage</h3>
+        <p>Save as <em>planner.html</em> and open in a modern browser. First run downloads libraries and models (cached thereafter). Enable WebGPU if available; WASM fallback is automatic.</p>
+
+        <h3 class="font-semibold">Architecture</h3>
+        <p>Single HTML with Tailwind (CDN), DOMPurify, Chart.js (ESM), and Transformers.js. Data schema in <code>localStorage</code> keyed by day (YYYY-MM-DD). Strict 24h cap on active items. PWA: service worker allow-lists CDNs and injects a manifest at runtime.</p>
+
+        <table class="table mt-2">
+          <thead><tr><th>Component</th><th>Technology</th><th>Purpose</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Styling</td><td>Tailwind CSS</td><td>Responsive UI + themes</td><td>Dark/Light via CSS vars</td></tr>
+            <tr><td>Sanitization</td><td>DOMPurify</td><td>Input XSS safety</td><td>Clean names/notes/tags</td></tr>
+            <tr><td>Charts</td><td>Chart.js v4</td><td>Pie distribution</td><td>Live updates</td></tr>
+            <tr><td>AI</td><td>Transformers.js</td><td>Local LLM</td><td>WebGPU/WASM</td></tr>
+            <tr><td>Storage</td><td>localStorage</td><td>Days & settings</td><td>~5MB budget</td></tr>
+            <tr><td>PWA</td><td>SW + Manifest</td><td>Offline/install</td><td>CDN allow-list</td></tr>
+          </tbody>
+        </table>
+
+        <h3 class="font-semibold">Comparisons</h3>
+        <table class="table mt-2">
+          <thead><tr><th>App</th><th>Offline AI</th><th>Pricing</th><th>Strength</th><th>Weakness vs Planner</th></tr></thead>
+          <tbody>
+            <tr><td>This Planner</td><td>Yes</td><td>Free</td><td>Privacy, simple</td><td>No cloud sync</td></tr>
+            <tr><td>Trevor AI</td><td>Partial</td><td>Paid</td><td>Calendar AI</td><td>Online/subscription</td></tr>
+            <tr><td>Motion</td><td>No</td><td>Paid</td><td>Team agents</td><td>Overkill solo</td></tr>
+            <tr><td>Structured</td><td>No</td><td>Free/Paid</td><td>Timeline UI</td><td>No coaching</td></tr>
+          </tbody>
+        </table>
+
+        <h3 class="font-semibold">Citations</h3>
+        <ul class="list-disc pl-6">
+          <li><a class="underline" href="https://huggingface.co/docs/transformers.js/en/index" target="_blank" rel="noopener">Transformers.js Docs</a></li>
+          <li><a class="underline" href="https://huggingface.co/Xenova/t5-small" target="_blank" rel="noopener">Xenova/t5-small</a></li>
+          <li><a class="underline" href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct" target="_blank" rel="noopener">SmolLM2-135M-Instruct</a></li>
+          <li><a class="underline" href="https://www.trevorai.com/" target="_blank" rel="noopener">Trevor AI</a></li>
+          <li><a class="underline" href="https://www.usemotion.com/" target="_blank" rel="noopener">Motion</a></li>
+          <li><a class="underline" href="https://structured.app/" target="_blank" rel="noopener">Structured</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.3';
+
+    // ===== Elements & State =====
+    const plannerEl = document.getElementById('planner');
+    const summaryEl = document.getElementById('summary');
+    const toast = document.getElementById('toast');
+    const modelChip = document.getElementById('model-chip');
+    const envChip = document.getElementById('env-chip');
+    const progressWrap = document.getElementById('progress-wrap');
+    const progress = document.getElementById('progress');
+    const freeHoursEl = document.getElementById('free-hours');
+    const includeCompletedEl = document.getElementById('chart-include-completed');
+    const liveRegion = document.getElementById('live-region');
+    const filterQEl = document.getElementById('filter-q');
+    const hideCompletedEl = document.getElementById('hide-completed');
+    const dayPicker = document.getElementById('day-picker');
+    const undoBanner = document.getElementById('undo-banner');
+    const docsModal = document.getElementById('docs-modal');
+    const openDocsBtn = document.getElementById('open-docs');
+    const closeDocsBtn = document.getElementById('close-docs');
+
+    const askBtn = document.getElementById('ask-coach');
+    const regenBtn = document.getElementById('regen');
+    const clearLogBtn = document.getElementById('clear-log');
+
+    let lastFocusedBeforeDocs=null;
+
+    // Theme toggle
+    const THEME_KEY='planner_theme';
+    const themeBtn = document.getElementById('theme-toggle');
+    function applyTheme(t){document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark'); themeBtn.textContent=(t==='light'?'☾':'☀');}
+    let theme = localStorage.getItem(THEME_KEY) || 'dark'; applyTheme(theme);
+    themeBtn.onclick=()=>{ theme = (theme==='dark'?'light':'dark'); localStorage.setItem(THEME_KEY, theme); applyTheme(theme); };
+
+    // Docs modal
+    function openDocs(){ lastFocusedBeforeDocs=document.activeElement; docsModal.classList.add('show'); docsModal.setAttribute('aria-hidden','false'); closeDocsBtn.focus(); }
+    function closeDocs(){ docsModal.classList.remove('show'); docsModal.setAttribute('aria-hidden','true'); lastFocusedBeforeDocs?.focus(); }
+    openDocsBtn.onclick=openDocs; closeDocsBtn.onclick=closeDocs;
+    docsModal.addEventListener('click',e=>{ if (e.target===docsModal) closeDocs(); });
+    window.addEventListener('keydown',e=>{ if (e.key==='Escape' && docsModal.classList.contains('show')) closeDocs(); });
+    // Focus trap
+    docsModal.addEventListener('keydown', (e)=>{
+      if (!docsModal.classList.contains('show')) return;
+      if (e.key !== 'Tab') return;
+      const focusables = docsModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length-1];
+      if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    });
+
+    // Tag palette
+    const TAGS = ['Work','Health','Rest','Learn','Social','Admin','Misc'];
+
+    // Storage v2
+    const STORAGE_KEY = 'planner_v2';
+    let store = loadStore();
+
+    // Current date key (local TZ safe)
+    let currentDate = store.settings?.lastDay || toDateKey(new Date());
+    dayPicker.value = currentDate;
+
+    // Working set
+    let activities = getDay(currentDate);
+
+    let chart, ChartJS;
+
+    // For a11y focus restoration after re-renders
+    let pendingFocusIndex = null;
+
+    // ===== Backend selection (default WASM) =====
+    const BACKEND_KEY='planner_backend';
+    let deviceKind = localStorage.getItem(BACKEND_KEY) || 'wasm';
+    function setBackend(k){ deviceKind=k; localStorage.setItem(BACKEND_KEY,k); updateEnvChip(); }
+    function updateEnvChip(){
+      if (deviceKind==='webgpu' && !('gpu' in navigator)) { deviceKind='wasm'; localStorage.setItem(BACKEND_KEY,'wasm'); }
+      const dot = envChip.querySelector('.dot');
+      dot.className = 'dot ' + (deviceKind==='webgpu' ? 'bg-blue-500' : 'bg-gray-500');
+      envChip.querySelector('span').textContent = deviceKind==='webgpu' ? 'WebGPU active' : 'WASM active';
+    }
+    updateEnvChip();
+
+    // ===== Utils =====
+    const sanitize = (s) => DOMPurify.sanitize(String(s??''));
+
+    const toastQueue = []; let toastTimer = null;
+    function showToast(msg, type=''){
+      toast.className = 'toast ' + (type||'');
+      const safeHTML = DOMPurify.sanitize(String(msg), {ALLOWED_TAGS:['button','b','strong','i','em'], ALLOWED_ATTR:['class']});
+      toast.innerHTML = safeHTML; toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+        if (toastQueue.length) { const next = toastQueue.shift(); showToast(next.msg, next.type); }
+      }, 2600);
+    }
+    function queueToast(msg, type=''){ if (toast.classList.contains('show')) toastQueue.push({msg, type}); else showToast(msg, type); }
+
+    function announce(msg){ liveRegion.textContent = msg; }
+
+    function toDateKey(d){
+      const x = new Date(d);
+      x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
+      return x.toISOString().slice(0,10);
+    }
+    function addDays(key, n){ const d = new Date(key+'T00:00'); d.setDate(d.getDate()+n); return toDateKey(d); }
+
+    function loadStore(){
+      try{
+        const v2 = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        if (v2 && v2.days) return v2;
+      }catch{}
+      let migrated = { days: {}, settings: {} };
+      try{
+        const legacy = JSON.parse(localStorage.getItem('planner')||'[]');
+        if (Array.isArray(legacy) && legacy.length){
+          const today = toDateKey(new Date());
+          migrated.days[today] = legacy.map((a, idx)=> normItem(a, idx));
+          localStorage.removeItem('planner');
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          return migrated;
+        }
+      }catch{}
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      return migrated;
     }
 
-    function renderActivityManager() {
-      activityList.innerHTML = "";
-      activities.forEach((a, i) => {
-        const li = document.createElement("li");
-        li.className = "flex justify-between bg-gray-700 p-2 rounded";
-        li.innerHTML = `
-          <span>${a}</span>
-          <button class="bg-red-500 px-2 rounded" onclick="deleteActivity(${i})">✕</button>
-        `;
-        activityList.appendChild(li);
-      });
+    function getDay(key){
+      const arr = Array.isArray(store.days?.[key]) ? store.days[key] : [];
+      return arr.map((a, idx)=> normItem(a, idx));
     }
 
-    // --- Save ---
-    function saveActivities() {
-      localStorage.setItem("activities", JSON.stringify(activities));
-      renderActivities();
-    }
-
-    function saveLogs() {
-      localStorage.setItem("activityLogs", JSON.stringify(logs));
-    }
-
-    // --- Actions ---
-    logBtn.onclick = () => {
-      const act = activitySelect.value;
-      const entry = { 
-        activity: act, 
-        time: new Date().toLocaleString(),
-        feedback: coachFeedback(act)
+    function normItem(a, idx){
+      return {
+        id: a.id ?? (crypto.randomUUID?.() ?? String(Date.now()+idx)),
+        name: String(a.name||'').slice(0,20),
+        notes: String(a.notes||'').slice(0,140),
+        tags: Array.isArray(a.tags) ? a.tags.slice(0,6).map(t=>String(t).slice(0,16)) : parseTags(a.tags||''),
+        duration: Math.max(0.25, Number(a.duration)||0),
+        completed: !!a.completed
       };
-      logs.push(entry);
-      saveLogs();
-      renderLogs();
-    };
+    }
 
-    clearBtn.onclick = () => {
-      if (confirm("Delete all logs?")) {
-        logs = [];
-        saveLogs();
-        renderLogs();
+    function parseTags(s){
+      return String(s||'')
+        .split(',').map(x=>x.trim()).filter(Boolean).slice(0,6)
+        .map(x=> x[0].toUpperCase()+x.slice(1).toLowerCase());
+    }
+
+    function save(){
+      try{
+        store.days[currentDate] = activities;
+        const data = JSON.stringify(store);
+        if (data.length > 4 * 1024 * 1024) queueToast('Warning: Storage nearing limit', 'warn');
+        localStorage.setItem(STORAGE_KEY, data);
+      }catch(e){ queueToast('Save failed: ' + (e?.message||e), 'error'); }
+    }
+
+    function sumHours(list, includeCompleted=true){
+      return list.reduce((s,a)=> s + (includeCompleted || !a.completed ? Number(a.duration||0) : 0), 0);
+    }
+
+    function getDisplayed(){
+      const q = filterQEl.value.trim().toLowerCase();
+      const hideDone = !!hideCompletedEl.checked;
+      return activities.filter(a=>{
+        if (hideDone && a.completed) return false;
+        if (!q) return true;
+        const hay = `${a.name} ${a.notes} ${(a.tags||[]).join(' ')}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    function fmtHours(h){
+      const n = Number(h||0);
+      return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/,'').replace(/\.0$/,'');
+    }
+
+    // ===== Render =====
+    async function render(){
+      plannerEl.innerHTML = '';
+      const displayed = getDisplayed();
+      const active = activities.filter(a=>!a.completed);
+      const totalAll = sumHours(activities, true);
+      const totalActive = sumHours(active, true);
+
+      freeHoursEl.textContent = `Active: ${fmtHours(totalActive)}h · Free left: ${fmtHours(Math.max(0,(24-totalActive)))}h`;
+
+      const fragment = document.createDocumentFragment();
+      displayed.forEach((a, dispIdx) => {
+        const origIdx = activities.indexOf(a);
+        if (origIdx === -1) return;
+        const li = document.createElement('li');
+        li.className='flex items-start gap-2 bg-[var(--panel-2)] p-2 rounded transition';
+        li.setAttribute('draggable','true');
+        li.dataset.index = origIdx;
+
+        const tagsHtml = (a.tags||[]).map(t=>{
+          const safe = sanitize(t);
+          const cls = `tag-${(TAGS.includes(t)?t:'Misc')}`;
+          return `<span class="chip ${cls} text-white/90 mr-1 mb-1">${safe}</span>`;
+        }).join('');
+
+        const durText = fmtHours(a.duration);
+
+        li.innerHTML = `
+          <div class="handle select-none text-xl leading-none px-1" title="Drag to reorder" aria-label="Reorder handle" tabindex="0">⋮⋮</div>
+          <input type="checkbox" ${a.completed?'checked':''} class="mt-1 accent-[var(--primary)] complete" aria-label="Mark completed">
+          <div class="flex-1 min-w-0">
+            <div class="font-medium name ${a.completed?'line-through-muted':''}">${sanitize(a.name)} <span class="text-sm text-[var(--muted)]">(${durText}h)</span></div>
+            <div class="flex flex-wrap gap-1 mb-1">${tagsHtml}</div>
+            <div class='text-sm text-[var(--muted)] note-text ${a.completed?'line-through-muted':''}'>${sanitize(a.notes||'')}</div>
+            <button class="note-toggle" aria-label="Toggle notes">More</button>
+          </div>
+          <div class="flex gap-2">
+            <button class='btn btn-ghost edit' title="Edit" aria-label="Edit activity">Edit</button>
+            <button class='btn btn-danger delete' title="Delete" aria-label="Delete activity">Delete</button>
+          </div>`;
+
+        const noteEl = li.querySelector('.note-text');
+        const toggle = li.querySelector('.note-toggle');
+        if (!a.notes || a.notes.length <= 80){
+          toggle.remove();
+        } else {
+          const noteId = `note-${a.id}`;
+          noteEl.id = noteId;
+          toggle.setAttribute('aria-controls', noteId);
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.addEventListener('click', ()=>{
+            noteEl.classList.toggle('expanded');
+            const expanded = noteEl.classList.contains('expanded');
+            toggle.textContent = expanded ? 'Less' : 'More';
+            toggle.setAttribute('aria-expanded', String(expanded));
+          });
+        }
+
+        li.addEventListener('dragstart', (e)=>{
+          li.classList.add('dragging');
+          e.dataTransfer.setData('text/plain', String(origIdx));
+        });
+        li.addEventListener('dragend', ()=> li.classList.remove('dragging'));
+        li.addEventListener('dragover', (e)=>{ e.preventDefault(); li.classList.add('drop-target'); });
+        li.addEventListener('dragleave', ()=> li.classList.remove('drop-target'));
+        li.addEventListener('drop', (e)=>{
+          e.preventDefault(); li.classList.remove('drop-target');
+          const from = Number(e.dataTransfer.getData('text/plain'));
+          const to = origIdx;
+          if (Number.isInteger(from) && Number.isInteger(to) && from!==to){
+            const [moved] = activities.splice(from,1);
+            activities.splice(to,0,moved);
+            save(); announce(`Moved ${moved.name} to position ${to+1}.`);
+            pendingFocusIndex = to;
+            render();
+          }
+        });
+
+        fragment.appendChild(li);
+      });
+      plannerEl.appendChild(fragment);
+
+      summaryEl.innerHTML = `
+        <div>Total items: ${activities.length} (active ${active.length})</div>
+        <div>Total hours (all): ${fmtHours(totalAll)}</div>
+        <div>Total hours (active): ${fmtHours(totalActive)}</div>
+        <table class="sr-only" aria-label="Activity summary">
+          <tr><th>Activity</th><th>Hours</th><th>Status</th><th>Tags</th></tr>
+          ${activities.map(a=>`<tr><td>${sanitize(a.name)}</td><td>${fmtHours(a.duration)}</td><td>${a.completed?'done':'active'}</td><td>${(a.tags||[]).map(sanitize).join(';')}</td></tr>`).join('')}
+        </table>`;
+
+      const colors=['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+      const datasetItems = (includeCompletedEl.checked ? activities : activities.filter(a=>!a.completed));
+      const canvas = document.getElementById('chart');
+      if (!datasetItems.length) {
+        if (chart) { chart.destroy(); chart = null; }
+        const ctx = canvas.getContext && canvas.getContext('2d');
+        if (ctx) { ctx.clearRect(0,0,canvas.width||300,canvas.height||150); }
+      } else {
+        if (!ChartJS) {
+          const mod = await import('https://cdn.jsdelivr.net/npm/chart.js@4.5.0/auto/+esm');
+          ChartJS = mod?.default || mod?.Chart || window.Chart;
+        }
+        const data={labels:datasetItems.map(a=>a.name),datasets:[{data:datasetItems.map(a=>a.duration),backgroundColor:datasetItems.map((_,i)=>colors[i%colors.length])}]};
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (chart) { chart.destroy(); chart = null; }  // prevent double charts on rapid toggles
+        chart = new ChartJS(canvas, { type:'pie', data, options:{ responsive:true, maintainAspectRatio:false, animation: !reduceMotion, plugins:{ legend:{ position:'top' } } } });
       }
-    };
 
-    manageBtn.onclick = () => {
-      modal.classList.remove("hidden");
-      renderActivityManager();
-    };
-    closeModal.onclick = () => modal.classList.add("hidden");
-
-    addActivityBtn.onclick = () => {
-      const val = newActivityInput.value.trim();
-      if (val && !activities.includes(val)) {
-        activities.push(val);
-        saveActivities();
-        renderActivityManager();
-        newActivityInput.value = "";
+      if (pendingFocusIndex!=null){
+        const h=plannerEl.querySelector(`li[data-index="${pendingFocusIndex}"] .handle`);
+        h?.focus(); pendingFocusIndex=null;
       }
+    }
+
+    (function restoreSettings(){
+      const s = store.settings||{};
+      if (typeof s.filterQ === 'string') filterQEl.value = s.filterQ;
+      if (s.hideCompleted === true) hideCompletedEl.checked = true;
+      if (s.includeCompletedInChart === true) includeCompletedEl.checked = true;
+      if (typeof s.cacheEnabled === 'boolean') document.getElementById('cache-toggle').checked = s.cacheEnabled;
+    })();
+
+    render();
+    document.getElementById('act-name')?.focus();
+
+    // ===== Planner Interactions =====
+    const nameEl = document.getElementById('act-name');
+    const notesEl = document.getElementById('act-notes');
+    const tagsEl = document.getElementById('act-tags');
+    const durEl = document.getElementById('act-duration');
+
+    document.getElementById('clear-form').onclick = ()=>{ nameEl.value=''; notesEl.value=''; tagsEl.value=''; durEl.value=''; nameEl.focus(); };
+
+    document.getElementById('activity-form').onsubmit = (e)=>{
+      e.preventDefault();
+      const name = nameEl.value.trim();
+      const notes = notesEl.value.trim();
+      const tags = parseTags(tagsEl.value);
+      const dur = parseFloat(durEl.value);
+      const currentActive = activities.reduce((s,a)=> s + (!a.completed? Number(a.duration||0) : 0), 0);
+      if (!name || isNaN(dur) || dur <= 0) { queueToast('Invalid input','error'); return; }
+      if (currentActive + dur > 24) { queueToast('Active hours cannot exceed 24','warn'); return; }
+      // store raw values; sanitize only on render
+      activities.push({ id: crypto.randomUUID?.() ?? String(Date.now()+Math.random()), name: name, notes: notes, tags, duration: dur, completed:false });
+      save(); render();
+      announce(`${name} added`);
+      e.target.reset(); nameEl.focus();
     };
 
-    window.deleteLog = (i) => {
-      logs.splice(i, 1);
-      saveLogs();
-      renderLogs();
+    let addLock=false;
+    document.querySelectorAll('.quick').forEach(b=>{
+      b.onclick=()=>{
+        if (addLock) return; addLock=true;
+        const dur = +b.dataset.dur;
+        const totalActive = activities.reduce((s,a)=> s + (!a.completed? Number(a.duration||0) : 0), 0);
+        if (totalActive + dur > 24) { queueToast('Active hours cannot exceed 24','warn'); addLock=false; return; }
+        activities.push({ id: crypto.randomUUID?.() ?? String(Date.now()+Math.random()), name:b.dataset.name, notes:'', tags: parseTags(b.dataset.tags||''), duration: dur, completed:false });
+        save(); render(); announce(`${b.dataset.name} added`);
+        setTimeout(()=>addLock=false,180);
+      };
+    });
+
+    let lastDeleted = null;
+    if (undoBanner) {
+      undoBanner.onclick = ()=>{
+        if (lastDeleted){
+          activities.splice(lastDeleted.index, 0, lastDeleted.item);
+          lastDeleted = null; save(); render(); announce('Restored');
+          undoBanner.classList.add('hidden');
+        }
+      };
+    }
+
+    plannerEl.addEventListener('click', (e)=>{
+      const li = e.target.closest('li');
+      if (!li) return;
+      const i = Number(li.dataset.index);
+
+      if (e.target.classList.contains('delete')){
+        lastDeleted = {item: activities[i], index: i};
+        activities.splice(i,1);
+        pendingFocusIndex = Math.min(i, activities.length-1);
+        save(); render();
+        if (undoBanner) undoBanner.classList.remove('hidden');
+        queueToast('Deleted. <button class="undo btn btn-accent ml-2">Undo</button>');
+        toast.onclick = (ev)=>{
+          if (ev.target.closest && ev.target.closest('.undo') && lastDeleted){
+            activities.splice(lastDeleted.index, 0, lastDeleted.item); lastDeleted=null; save(); render(); announce('Restored');
+            if (undoBanner) undoBanner.classList.add('hidden');
+          }
+        };
+      }
+
+      if (e.target.classList.contains('edit')){
+        inlineEdit(li, i);
+      }
+    });
+
+    plannerEl.addEventListener('change', (e)=>{
+      const li = e.target.closest('li'); if (!li) return;
+      if (e.target.classList.contains('complete')){
+        const i = Number(li.dataset.index);
+        activities[i].completed = e.target.checked;
+        save(); render(); announce(`${activities[i].name} ${e.target.checked?'completed':'reactivated'}`);
+      }
+    });
+
+    function inlineEdit(li, i){
+      const a = activities[i];
+      const row = li.querySelector('.flex-1');
+      const prev = row.innerHTML;
+      row.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-7 gap-2">
+          <input class="md:col-span-2 p-2 rounded bg-[var(--panel-2)] edit-name" maxlength="20" aria-label="Edit name"/>
+          <input class="md:col-span-3 p-2 rounded bg-[var(--panel-2)] edit-notes" maxlength="140" aria-label="Edit notes"/>
+          <input class="md:col-span-1 p-2 rounded bg-[var(--panel-2)] edit-tags" maxlength="60" placeholder="Work,Health" aria-label="Edit tags"/>
+          <input type="number" min="0.25" step="0.25" class="md:col-span-1 p-2 rounded bg-[var(--panel-2)] edit-dur" aria-label="Edit duration">
+        </div>
+        <div class="mt-2 flex gap-2">
+          <button class="btn btn-accent save-edit" aria-label="Save edit">Save</button>
+          <button class="btn btn-ghost cancel-edit" aria-label="Cancel edit">Cancel</button>
+        </div>`;
+      const nameI = row.querySelector('.edit-name');
+      const notesI = row.querySelector('.edit-notes');
+      const tagsI = row.querySelector('.edit-tags');
+      const durI = row.querySelector('.edit-dur');
+      nameI.value = a.name; notesI.value = a.notes; tagsI.value = (a.tags||[]).join(', '); durI.value = a.duration;
+      nameI.focus(); nameI.select();
+
+      row.querySelector('.cancel-edit').onclick = ()=>{ row.innerHTML = prev; };
+      row.querySelector('.save-edit').onclick = ()=>{
+        const newName = nameI.value.trim();
+        const newNotes = notesI.value.trim();
+        const newTags = parseTags(tagsI.value);
+        const newDur = parseFloat(durI.value);
+        if (!newName || isNaN(newDur) || newDur<=0){ queueToast('Invalid input','error'); return; }
+        const totalActiveExcluding = activities.reduce((s,x,idx)=> s + ((!x.completed && idx!==i)? Number(x.duration||0):0), 0);
+        const willBeActive = !a.completed;
+        if (willBeActive && totalActiveExcluding + newDur > 24){ queueToast('Active hours cannot exceed 24','warn'); return; }
+        // store raw values; sanitize on render
+        activities[i] = { ...a, name: newName, notes: newNotes, tags: newTags, duration: newDur };
+        save(); render(); announce(`${newName} updated`);
+      };
+    }
+
+    plannerEl.addEventListener('keydown', (e)=>{
+      const li = e.target.closest('li'); if (!li) return;
+      const i = Number(li.dataset.index);
+      if (e.key === 'e'){ e.preventDefault(); inlineEdit(li, i); }
+      if (e.key === 'Delete'){ e.preventDefault(); li.querySelector('.delete')?.click(); }
+      if (e.key === 'ArrowUp' && e.target.classList.contains('handle')){
+        e.preventDefault();
+        if (i>0){
+          const [m] = activities.splice(i,1); activities.splice(i-1,0,m);
+          save(); announce(`Moved ${m.name} to position ${i}`); pendingFocusIndex=i-1; render();
+        }
+      }
+      if (e.key === 'ArrowDown' && e.target.classList.contains('handle')){
+        e.preventDefault();
+        if (i<activities.length-1){
+          const [m] = activities.splice(i,1); activities.splice(i+1,0,m);
+          save(); announce(`Moved ${m.name} to position ${i+2}`); pendingFocusIndex=i+1; render();
+        }
+      }
+    });
+
+    includeCompletedEl.addEventListener('change', ()=>{ store.settings.includeCompletedInChart = !!includeCompletedEl.checked; save(); render(); });
+    filterQEl.addEventListener('input', debounce(()=>{ store.settings.filterQ = filterQEl.value; save(); render(); }, 120));
+    hideCompletedEl.addEventListener('change', ()=>{ store.settings.hideCompleted = !!hideCompletedEl.checked; save(); render(); });
+
+    // ===== Export / Import =====
+    document.getElementById('export-planner').onclick = ()=> downloadJSON({ planner: activities }, `planner-${currentDate}.json`);
+    document.getElementById('export-data').onclick = ()=> downloadJSON(store, 'planner-data.json');
+    document.getElementById('export-csv-day').onclick = ()=> downloadCSV(activities, `planner-${currentDate}.csv`);
+    document.getElementById('export-csv-all').onclick = ()=>{
+      const rows = [];
+      Object.keys(store.days||{}).sort().forEach(day=>{
+        (store.days[day]||[]).forEach(a=> rows.push({...a, __date: day}));
+      });
+      downloadCSV(rows, 'planner-all.csv', true);
     };
 
-    window.deleteActivity = (i) => {
-      activities.splice(i, 1);
-      saveActivities();
-      renderActivityManager();
+    function downloadJSON(obj, fn){
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}));
+      a.download=fn; a.click();
+    }
+
+    function csvEscape(v){
+      const s = String(v??'');
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+      return s;
+    }
+    function downloadCSV(list, fn, includeDate=false){
+      const headers = ['date','id','name','notes','tags','duration','completed'];
+      const lines = [headers.join(',')];
+      list.forEach(a=>{
+        const date = includeDate ? (a.__date||currentDate) : currentDate;
+        const row = [date, a.id, a.name, a.notes, (a.tags||[]).join(';'), a.duration, a.completed?'1':'0']
+          .map(csvEscape).join(',');
+        lines.push(row);
+      });
+      const aEl=document.createElement('a');
+      aEl.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
+      aEl.download=fn; aEl.click();
+    }
+
+    document.getElementById('import-btn').onclick = ()=> document.getElementById('import-file').click();
+    document.getElementById('import-file').onchange = (e)=>{
+      const file = e.target.files[0]; if (!file) return;
+      const r = new FileReader();
+      r.onload = ()=>{
+        try{
+          const j = JSON.parse(r.result);
+          if (Array.isArray(j.planner)){
+            const norm = j.planner.map((a, idx)=> normItem(a, idx));
+            if (norm.some(a => (a.tags || []).length > 6)) throw new Error('Too many tags per item');
+            const activeHours = norm.filter(x=>!x.completed).reduce((s,x)=> s + Number(x.duration||0), 0);
+            if (activeHours > 24) throw new Error('Active hours exceed 24');
+            activities = norm; save(); render(); announce('Import successful (day only)');
+            return;
+          }
+          if (j && j.days){
+            Object.keys(j.days).forEach(day=>{
+              const arr = j.days[day];
+              if (!Array.isArray(arr)) throw new Error('Invalid days array');
+              const norm = arr.map((a, idx)=> normItem(a, idx));
+              if (norm.some(a => (a.tags || []).length > 6)) throw new Error(`Too many tags on ${day}`);
+              const activeHours = norm.filter(x=>!x.completed).reduce((s,x)=> s + Number(x.duration||0), 0);
+              if (activeHours > 24) throw new Error(`Active hours exceed 24 on ${day}`);
+              j.days[day] = norm;
+            });
+            store = { days: j.days, settings: j.settings||{} };
+            activities = getDay(currentDate);
+            save(); render(); announce('Import successful (all days)');
+            return;
+          }
+          throw new Error('Unsupported JSON format');
+        }catch(err){ queueToast('Import failed: ' + err.message, 'error'); }
+      };
+      r.readAsText(file);
     };
 
-    // --- Init ---
-    renderActivities();
-    renderLogs();
+    // ===== Day navigation =====
+    document.getElementById('prev-day').onclick = ()=> switchDay(addDays(currentDate, -1));
+    document.getElementById('next-day').onclick = ()=> switchDay(addDays(currentDate, 1));
+    dayPicker.addEventListener('change', ()=>{ if (dayPicker.value) switchDay(dayPicker.value); });
+
+    function switchDay(day){
+      save();
+      currentDate = day; dayPicker.value = day;
+      activities = getDay(currentDate);
+      store.settings = store.settings || {};
+      store.settings.lastDay = currentDate;
+      save();
+      render(); announce('Day switched');
+    }
+
+    document.getElementById('copy-prev').onclick = ()=>{
+      const prev = addDays(currentDate, -1);
+      const src = getDay(prev);
+      if (!src.length){ queueToast('No data yesterday','warn'); return; }
+      const cloned = src.map((a, idx)=> ({...a, id: crypto.randomUUID?.() ?? String(Date.now()+idx), completed:false }));
+      const total = cloned.reduce((s,x)=> s + Number(x.duration||0), 0);
+      if (total > 24){ queueToast('Copy aborted: active hours exceed 24','warn'); return; }
+      activities = cloned; save(); render(); announce('Copied from yesterday');
+    };
+
+    // ===== AI Coach (Transformers.js 3.7.3) =====
+    let modelChoice = localStorage.getItem('model') || 't5';
+    let generator;
+    let isGenerating = false;
+
+    const sysCoach = 'You are a concise, encouraging AI coach. Praise first. Then give a 3-bullet micro-plan for the next hour. End with one habit insight. Keep it practical.';
+    const maxTokensFor = (n, mode)=>{ const base = (mode==='default')?180:120; return Math.min(250, Math.max(100, base + Math.round(n*5))); };
+
+    function setCoachEnabled(enabled){
+      askBtn.disabled = !enabled;
+      regenBtn.disabled = !enabled;
+    }
+
+    function showProgress(){ progressWrap.style.display='block'; progress.style.width='0%'; progress.textContent=''; }
+    function hideProgress(){ progressWrap.style.display='none'; progress.style.width='0%'; progress.textContent=''; }
+
+    async function loadModel(fellback=false){
+      setCoachEnabled(false);
+      generator = null;
+      modelChip.querySelector('span').textContent = 'Loading ' + modelChoice;
+      showProgress();
+      try{
+        const task = (modelChoice==='t5') ? 'text2text-generation' : 'text-generation';
+        const modelId = (modelChoice==='t5') ? 'Xenova/t5-small' : 'HuggingFaceTB/SmolLM2-135M-Instruct';
+        const dtype = deviceKind === 'webgpu' ? 'fp16' : 'q8';
+        const opts = {
+          device: deviceKind,
+          dtype: dtype,
+          progress_callback: ({loaded=0,total=0}={})=>{
+            if (total){
+              const pct = ((100*loaded/total) | 0);
+              const mbL = (loaded/1048576).toFixed(1), mbT=(total/1048576).toFixed(1);
+              progress.style.width = pct + '%';
+              progress.textContent = `${mbL}MB/${mbT}MB (${pct}%)`;
+            }
+          }
+        };
+
+        generator = await pipeline(task, modelId, opts);
+
+        // Warm-up probe to catch brittle GPU backends
+        try{
+          const probeText = (modelChoice==='t5') ? 'generate: ok' : 'User: say ok\nAssistant:';
+          await generator(probeText, { max_new_tokens: 1, temperature: 0.0, do_sample: false });
+        }catch(warmErr){
+          if (deviceKind==='webgpu'){
+            queueToast('WebGPU warm-up failed. Update GPU drivers or switch to WASM.', 'warn');
+            setBackend('wasm');
+            return await loadModel(true);
+          }
+          throw warmErr;
+        }
+        const mDot = modelChip.querySelector('.dot');
+        if (mDot) mDot.className = 'dot ' + (modelChoice==='t5' ? 'bg-green-500' : 'bg-purple-500');
+        modelChip.querySelector('span').textContent = (modelChoice==='t5'?'t5-small':'SmolLM2-135M') + ' · ' + (deviceKind==='webgpu'?'WebGPU':'WASM') + (dtype !== 'fp16' ? ` (q8)` : '');
+        setCoachEnabled(true);
+      }catch(err){
+        if (deviceKind==='webgpu' && !fellback){
+          queueToast('WebGPU failed. Falling back to WASM','warn');
+          setBackend('wasm');
+          return await loadModel(true);
+        }
+        modelChip.querySelector('span').textContent='Error';
+        queueToast('Model load error: '+(err?.message||err),'error');
+        setCoachEnabled(false);
+      } finally {
+        hideProgress();
+      }
+    }
+    await loadModel();
+
+    document.getElementById('switch-model').onclick = async ()=>{
+      modelChoice = (modelChoice==='t5') ? 'smol' : 't5';
+      localStorage.setItem('model', modelChoice);
+      await loadModel();
+    };
+
+    document.getElementById('force-wasm').onclick = async ()=>{
+      setBackend('wasm');
+      await loadModel(true);
+      queueToast('Backend set to WASM','warn');
+    };
+
+    document.getElementById('try-webgpu').onclick = async ()=>{
+      if (!('gpu' in navigator)){ queueToast('WebGPU not supported','warn'); return; }
+      setBackend('webgpu');
+      await loadModel(true);
+      queueToast('Backend set to WebGPU');
+    };
+
+    function addLog(msg, cls){
+      const div = document.createElement('div');
+      div.className = cls; div.textContent = msg;
+      const log = document.getElementById('coach-log');
+      log.appendChild(div); log.scrollTop = log.scrollHeight;
+    }
+
+    function buildPrompt(){
+      const promptType = document.getElementById('prompt-type').value;
+      const custom = document.getElementById('custom-prompt').value.trim();
+
+      const allActive = activities.filter(a=>!a.completed);
+      const activitiesStr = allActive.map(a=>`${a.name} ${fmtHours(a.duration)}h${a.tags?.length?` [${a.tags.join('/')}]`:''}`).join(', ');
+
+      const core = custom || ((promptType==='default')
+        ? `Planned on ${currentDate}: ${activitiesStr}. Write ~180–220 words: start with praise, give 3 bullet micro-plan for the next hour, then 1 habit insight.`
+        : (promptType==='productivity')
+          ? `Planned on ${currentDate}: ${activitiesStr}. Give ~100–130 words with 3 concise productivity tips for the next hour.`
+          : `Planned on ${currentDate}: ${activitiesStr}. Give ~100–130 words: a motivational boost and 2 actionable steps for the next hour.`);
+
+      if (modelChoice === 't5') return `generate: ${core}`;
+      return `System: ${sysCoach}\nUser: ${core}\nAssistant:`;
+    }
+
+    function cleanAIOutput(s){
+      return String(s)
+        .replace(/^System:.*$/gmi,'')
+        .replace(/^User:.*$/gmi,'')
+        .replace(/^Assistant:\s*/gmi,'')
+        .replace(/^generate:\s*/i,'')
+        .replace(/\n{3,}/g,'\n\n')
+        .trim();
+    }
+
+    async function runGenerate(text, maxNew){
+      try{
+        return await generator(text, { max_new_tokens: maxNew, temperature: 0.65, do_sample: true });
+      }catch(err){
+        const msg = String(err?.message||err).toLowerCase();
+        if (deviceKind === 'webgpu' && (msg.includes('oom') || msg.includes('memory') || /out of memory/i.test(msg))){
+          queueToast('GPU OOM detected. Switching to WASM.', 'warn');
+          setBackend('wasm');
+          await loadModel(true);
+          return await generator(text, { max_new_tokens: maxNew, temperature: 0.65, do_sample: true });
+        }
+        if (deviceKind === 'webgpu' && /GPU|createBuffer|mappedAtCreation/i.test(msg)){
+          queueToast('WebGPU generation error. Switching to WASM','warn');
+          setBackend('wasm');
+          await loadModel(true);
+          return await generator(text, { max_new_tokens: maxNew, temperature: 0.65, do_sample: true });
+        }
+        throw err;
+      }
+    }
+
+    // AI cache registry
+    const AI_CACHE_REG='ai_cache_keys';
+    function regAdd(k){ try{ const r=JSON.parse(localStorage.getItem(AI_CACHE_REG)||'[]'); if(!r.includes(k)){ r.push(k); localStorage.setItem(AI_CACHE_REG, JSON.stringify(r)); } }catch{} }
+    document.getElementById('clear-ai-cache').onclick=()=>{ try{ (JSON.parse(localStorage.getItem(AI_CACHE_REG)||'[]')||[]).forEach(k=>localStorage.removeItem(k)); localStorage.removeItem(AI_CACHE_REG); queueToast('AI cache cleared'); }catch{ queueToast('Nothing to clear'); } };
+
+    // Unicode-safe cache key builder (SHA-256 hex, falls back to UTF-8 base64)
+async function makeCacheKey(s){
+  try{
+    if (crypto && crypto.subtle && crypto.subtle.digest){
+      const bytes = new TextEncoder().encode(s);
+      const hash = await crypto.subtle.digest('SHA-256', bytes);
+      const hex = Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      return 'ai_'+hex;
+    }
+  }catch{}
+  // Fallback: UTF-8 -> base64 that works with non‑Latin1
+  const utf8 = new TextEncoder().encode(s);
+  let bin = '';
+  for (let i = 0; i < utf8.length; i++) { bin += String.fromCharCode(utf8[i]); }
+  return 'ai_'+btoa(bin);
+}
+
+let lastPromptKey = null;
+
+    async function askCoach(forceFresh=false){
+      if (!generator){ queueToast('Model not ready','warn'); return; }
+      if (isGenerating) return;
+      isGenerating = true;
+      setCoachEnabled(false);
+
+      addLog('Thinking...','sys-note');
+      try{
+        const text = buildPrompt();
+        const promptType = document.getElementById('prompt-type').value;
+        const maxNew = maxTokensFor(activities.length, promptType);
+
+        const cacheAllowed = document.getElementById('cache-toggle').checked && !forceFresh;
+        const cacheKey = await makeCacheKey(`${currentDate}|${modelChoice}|${promptType}|${text}`);
+        lastPromptKey = cacheKey;
+
+        const cachedRaw = cacheAllowed && localStorage.getItem(cacheKey);
+        let cached = null;
+        if (cachedRaw) {
+          try {
+            const {response, timestamp} = JSON.parse(cachedRaw);
+            if (Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {  // 7 days
+              cached = response;
+            } else {
+              localStorage.removeItem(cacheKey);
+            }
+          } catch {}
+        }
+        if (cached){
+          document.querySelectorAll('.sys-note').forEach(n=>n.remove());
+          addLog(cached,'ai-bubble');
+          return;
+        }
+
+        const out = await runGenerate(text, maxNew);
+        document.querySelectorAll('.sys-note').forEach(n=>n.remove());
+        const raw = out?.[0]?.generated_text || out?.[0]?.summary_text || '(no output)';
+        const response = cleanAIOutput(raw);
+
+        if (!forceFresh && document.getElementById('cache-toggle').checked){
+          const cacheData = {response, timestamp: Date.now()};
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData)); regAdd(cacheKey);
+        }
+        addLog(response,'ai-bubble');
+      }catch(err){
+        document.querySelectorAll('.sys-note').forEach(n=>n.remove());
+        addLog('AI Coach error: ' + (err?.message||err), 'sys-note');
+      } finally {
+        isGenerating = false;
+        setCoachEnabled(true);
+      }
+    }
+
+    askBtn.onclick = ()=> askCoach(false);
+    regenBtn.onclick = ()=> askCoach(true);
+    clearLogBtn.onclick = ()=>{ document.getElementById('coach-log').innerHTML=''; };
+    document.getElementById('cache-toggle').addEventListener('change', ()=>{ store.settings.cacheEnabled = !!document.getElementById('cache-toggle').checked; save(); });
+
+    function debounce(fn, ms){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); } }
+
+    // Network state toasts
+    window.addEventListener('offline',()=>queueToast('You are offline. Cached assets only.','warn'));
+    window.addEventListener('online',()=>queueToast('Back online'));
+
+    // Minimal service worker + allow-list caching (self + CDN libs + HF hub)
+    if ('serviceWorker' in navigator){
+      const swCode = `
+        const CACHE='planner-pro-v2';
+        const ALLOW=[
+          /^https:\\/\\/cdn\\.tailwindcss\\.com\\//,
+          /^https:\\/\\/cdn\\.jsdelivr\\.net\\//,
+          /^https:\\/\\/huggingface\\.co\\//,
+          /^https:\\/\\/cdn-lfs\\.huggingface\\.co\\/\/\/   // LFS assets
+        ];
+        self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./']))));
+        self.addEventListener('fetch',e=>{
+          if (e.request.method!=='GET') return;
+          const u=new URL(e.request.url);
+          const same=u.origin===location.origin;
+          const ok=ALLOW.some(rx=>rx.test(e.request.url));
+          if(same){
+            e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{caches.open(CACHE).then(c=>c.put(e.request,res.clone()));return res;}).catch(()=>caches.match('./'))));
+          }else if(ok){
+            e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{caches.open(CACHE).then(c=>c.put(e.request,res.clone()));return res;}).catch(()=>r)));
+          }
+        });
+      `;
+      const blob = new Blob([swCode], {type:'text/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+    }
+
+    // Runtime manifest injection (installable)
+    (function registerManifest(){
+      try{
+        const icon=(s)=>{const c=document.createElement('canvas');c.width=c.height=s;const g=c.getContext('2d');
+          g.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--panel-2')||'#0f1523';g.fillRect(0,0,s,s);
+          g.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--primary')||'#3b82f6';g.fillRect(s*.1,s*.1,s*.8,s*.8);
+          g.fillStyle='#fff';g.font=`${Math.floor(s*.42)}px ui-sans-serif`;g.textAlign='center';g.textBaseline='middle';g.fillText('AI',s/2,s/2);
+          return c.toDataURL('image/png');};
+        const get=(v,f)=>getComputedStyle(document.documentElement).getPropertyValue(v).trim()||f;
+        const manifest={name:'AI Daily Activity Planner — Pro',short_name:'Planner Pro',start_url:'./',display:'standalone',
+          background_color:get('--bg','#0b0f17'),theme_color:get('--primary','#3b82f6'),
+          icons:[{src:icon(192),sizes:'192x192',type:'image/png'},{src:icon(512),sizes:'512x512',type:'image/png'}]};
+        const link=document.createElement('link');link.rel='manifest';link.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));
+        document.head.appendChild(link);
+      }catch{}
+    })();
   </script>
 </body>
 </html>
